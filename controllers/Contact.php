@@ -10,10 +10,10 @@ class Contact extends CI_Controller {
 	}
 	
 	public function newContact(){
-		$this->sendJson($this->MainModel->addContact($_POST['userID'],$_POST['contactNameToServer'],$_POST['contactMobileToServer']));
+		$this->sendJson($this->MainModel->addContact($_POST['userID'],$_POST['contactNameToServer'],$_POST['contactEmailToServer']));
 	}
-	public function getAllContacts(){
-	    $this->sendJson($this->MainModel->getAllContacts($_GET['userID']));
+	public function getAllContactsAddedByThisUser(){
+	    $this->sendJson($this->MainModel->getAllContactsAddedByThisUser($_GET['userID']));
 	}
 	private function sendJson($data) {
 		$this->output->set_header('Content-Type: application/json; charset=utf-8')->set_output(json_encode($data));

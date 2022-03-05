@@ -16,38 +16,40 @@ class MainModel extends CI_Model {
 		return $this->db->query("SELECT id, username, email, avatarURL FROM users WHERE id='$myUserID'")->first_row();
 	}
 
-    public function getAllContacts($userID){
-        $userName=$this->db->query("SELECT * FROM users WHERE id='$userID'")->first_row()->username;
-        return $this->db->query("SELECT c.contactName, c.email, u.id as contactUserID FROM contacts c JOIN users u ON u.email=c.email WHERE c.username='$userName'")->result();
+    public function getAllContactsAddedByThisUser($userID){
+        return $this->db->query("SELECT c.id as relationid,	c.useridOfContact, c.contactName, u.avatarURL FROM contacts c JOIN users u ON u.id=c.useridOfContact WHERE c.addedByUsedID='$userID'")->result();
     }
 	
-	public function addContact($userID,$contactName,$email){
-	    $userName=$this->db->query("SELECT * FROM users WHERE id='$userID'")->first_row()->username;
-	    if($this->db->query("SELECT * FROM users WHERE email='$email'")->num_rows()==0){
-	        if($this->db->query("SELECT * FROM contacts WHERE email=''")->num_rows()==0){
-	            if($this->db->query("INSERT INTO contacts(username, contactName, email) VALUES ('$userName','$contactName','$email')")){
-	                if($this->db->query("INSERT INTO users (username,password,email) VALUES('$contactName','blank','$email') ")){
-	                    return array("message"=>"Contact Added","result"=>false);
-	                }
-	                else{ return array("message"=>"Database Error","result"=>false); }
-    	        }
-    	        else{ return array("message"=>"Database Error","result"=>false); }
-	        }
-	        else{
-                return array("message"=>"This is already existed","result"=>false);
-	        }
+    public function addContact($userID,$contactName,$email){
+    	$dummy=md5("dummy");
+	    if($this->db->query("SELECT * FROM users WHERE email='$email'")->num_rows()==0){// newly added contact is not using the app yet
+	    	if ($this->db->query("INSERT INTO users (username, password, email) VALUES ('$contactName','$dummy','$email')")) {
+	    		$userIDofContact=$this->db->query("SELECT * FROM users WHERE email='$email'")->first_row()->id;
+	    		if($this->db->query("SELECT * FROM contacts WHERE addedByUsedID='$userID' AND useridOfContact='$userIDofContact'")->num_rows()==0){
+	    			if($this->db->query("INSERT INTO contacts(useridOfContact, contactName,addedByUsedID) VALUES ('$userIDofContact','$contactName','$userID')")){
+	    				return array("message"=>"Contact Added","result"=>false);
+	    			}
+	    			else{ return array("message"=>"Database Error","result"=>false); }	            
+	    		}
+	    		else{
+	    			return array("message"=>"This Contact is already existed","result"=>false);
+	    		}
+	    	}
+	    	else{
+	    		return array("message"=>"Unable to add new-contact!","result"=>false);
+	    	}
 	    }
 	    else{
-	        $contactUsername=$this->db->query("SELECT * FROM users WHERE email='$email'")->first_row()->username;
-	        if($this->db->query("SELECT * FROM contacts WHERE email=''")->num_rows()==0){
-	            if($this->db->query("INSERT INTO contacts(username, contactName, email) VALUES ('$userName','$contactName','$email')")){
-	                return array("message"=>"Contact Added","result"=>false);
-	            }
-	            else{ return array("message"=>"Database Error","result"=>false); }	            
-	        }
-	        else{
-                return array("message"=>"This is already existed","result"=>false);
-	        }
+	    	$userIDofContact=$this->db->query("SELECT * FROM users WHERE email='$email'")->first_row()->id;
+	    	if($this->db->query("SELECT * FROM contacts WHERE addedByUsedID='$userID' AND useridOfContact='$userIDofContact'")->num_rows()==0){
+	    		if($this->db->query("INSERT INTO contacts(useridOfContact, contactName, email) VALUES ('$useridOfContact','$contactName','$email')")){
+	    			return array("message"=>"Contact Added","result"=>false);
+	    		}
+	    		else{ return array("message"=>"Database Error","result"=>false); }	            
+	    	}
+	    	else{
+	    		return array("message"=>"This Contact is already existed","result"=>false);
+	    	}
 	    }
 	}
 
@@ -66,12 +68,14 @@ class MainModel extends CI_Model {
 
 	public function signUp($username,$password,$email){
 		$encoded=md5($password);
-	    if($this->db->query("SELECT * FROM users WHERE username='$username' AND email='$email'")->num_rows()==0){
-            if ($this->db->query("INSERT INTO users (username, password, email) VALUES ('$username','$encoded','".$email."')")) { return array("message"=>"Signed Up Successfully","result"=>true); }
-		    else{ return array("message"=>"Database Error; Please Try again","result"=>false); }	        
-	    }
-	    else{
-		    return array("message"=>"Logged In","result"=>true);
-	    }
-	}
+		if ($this->db->query("SELECT * FROM users WHERE email='$email'")->num_rows()==0) {
+			if ($this->db->query("INSERT INTO users (username, password, email) VALUES ('$username','$encoded','".$email."')")) { return array("message"=>"Signed Up Successfully","result"=>true); }
+				else{ return array("message"=>"Database Error; Please Try again","result"=>false); }	        
+			}
+			else{
+				$userIDofContact=$this->db->query("SELECT * FROM users WHERE email='$email'")->first_row()->id;
+				if ($this->db->query("UPDATE users SET password='$encoded', username='$username' WHERE id='$userIDofContact'")) { return array("message"=>"Signed Up Successfully","result"=>true); }
+				else{ return array("message"=>"Database Error; Please Try again","result"=>false); }	        
+			}
+		}
 }
